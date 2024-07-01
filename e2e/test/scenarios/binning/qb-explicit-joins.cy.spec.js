@@ -99,9 +99,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.wait("@dataset");
       echartsContainer()
         .get("text")
-        .should("contain", "Q1 1965")
-        .and("contain", "Q1 1972")
-        .and("contain", "Q1 2000");
+        .should("contain", "Q1 1968")
+        .and("contain", "Q1 1978")
+        .and("contain", "Q1 1988")
+        .and("contain", "Q1 1998");
     });
 
     it("should work for number", () => {
@@ -117,7 +118,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
     });
 
-    it("should work for longitude", { tags: "@flaky" }, () => {
+    it("should work for longitude", () => {
       changeBinningForDimension({
         name: "People → Longitude",
         fromBinning: "Auto bin",
@@ -229,9 +230,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       echartsContainer()
         .get("text", { timeout: 1000 })
-        .should("contain", "January 1965")
-        .and("contain", "January 1972")
-        .and("contain", "January 2000");
+        .should("contain", "January 1968")
+        .and("contain", "January 1978")
+        .and("contain", "January 1988")
+        .and("contain", "January 1998");
 
       cartesianChartCircle();
 
@@ -248,6 +250,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         .get("text")
         .should("contain", "Q1 1965")
         .and("contain", "Q1 1972")
+        .and("contain", "Q1 1979")
+        .and("contain", "Q1 1986")
+        .and("contain", "Q1 1993")
         .and("contain", "Q1 2000");
     });
 

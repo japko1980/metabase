@@ -1,16 +1,33 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createNativeQuestion,
   createQuestion,
+  enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  getNotebookStep,
+  hovercard,
+  join,
+  mapColumnTo,
+  modal,
+  openColumnOptions,
+  openNotebook,
   openQuestionActions,
   popover,
+  queryBuilderMain,
+  renameColumn,
   restore,
-  hovercard,
-  createNativeQuestion,
+  saveMetadataChanges,
+  saveQuestion,
+  startNewModel,
+  startNewQuestion,
   tableHeaderClick,
+  undoToast,
+  visualize,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 29943", () => {
   function reorderTotalAndCustomColumns() {
@@ -167,50 +184,6 @@ describe("issue 35711", () => {
   });
 });
 
-// TODO: unskip once 39150 is fixed
-describe.skip("issue 39150", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
-
-  ["model" as const, "question" as const].forEach(type => {
-    it(`should render results if a ${type} depends on a ${type} and both have the same custom column name (metabase#39150)`, () => {
-      createQuestion({
-        type,
-        name: `${type} 39150`,
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Total: ["+", ["field", ORDERS.TOTAL, null], 1],
-          },
-          limit: 5,
-        },
-      }).then(({ body: { id: questionId } }) => {
-        createQuestion(
-          {
-            type,
-            name: `${type} 39150 Child`,
-            query: {
-              "source-table": `card__${questionId}`,
-              expressions: {
-                Total: ["+", ["field", ORDERS.TOTAL, null], 1],
-              },
-            },
-          },
-          { visitQuestion: true },
-        );
-      });
-
-      cy.log("verify that rendered result has 3 'Total' columns");
-
-      cy.findAllByTestId("header-cell")
-        .filter(":contains('Total')")
-        .should("have.length", 3);
-    });
-  });
-});
-
 describe("issues 25884 and 34349", () => {
   const ID_DESCRIPTION =
     "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.";
@@ -288,4 +261,356 @@ describe("issue 23103", () => {
 
     hovercard().findByText("4 distinct values").should("exist");
   });
+});
+
+describe("issue 39150", { viewportWidth: 1600 }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("allows custom columns with the same name in nested models (metabase#39150-1)", () => {
+    const ccName = "CC Rating";
+
+    createQuestion({
+      name: "Source Model",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [ccName]: [
+            "ceil",
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        },
+        limit: 2,
+      },
+    }).then(({ body: { id: sourceModelId } }) => {
+      createQuestion(
+        {
+          name: "Nested Model",
+          type: "model",
+          query: {
+            "source-table": `card__${sourceModelId}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+    enterCustomColumnDetails({
+      formula: "floor([Rating])",
+      name: ccName,
+      blur: true,
+    });
+
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByTestId("header-cell")
+      .filter(`:contains('${ccName}')`)
+      .should("have.length", 2);
+  });
+
+  it("allows custom columns with the same name as the aggregation column from the souce model (metabase#39150-2)", () => {
+    createQuestion({
+      name: "Source Model",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            {
+              "base-type": "type/Text",
+            },
+          ],
+        ],
+        limit: 2,
+      },
+    }).then(({ body: { id: sourceModelId } }) => {
+      createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": `card__${sourceModelId}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+    enterCustomColumnDetails({
+      formula: "[Count] + 1",
+      name: "Count",
+      blur: true,
+    });
+
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains('Count')")
+      .should("have.length", 2);
+
+    saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
+
+    cy.log("Make sure this works for the deeply nested models as well");
+    cy.get("@nestedModelId").then(nestedModelId => {
+      createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": `card__${nestedModelId}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+    enterCustomColumnDetails({
+      formula: "[Count] + 5",
+      name: "Count",
+      blur: true,
+    });
+
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains('Count')")
+      .should("have.length", 3);
+  });
+});
+
+describe("issue 41785", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("does not break the question when removing column with the same mapping as another column (metabase#41785)", () => {
+    // it's important to create the model through UI to reproduce this issue
+    startNewModel();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    join();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    popover().findByText("ID").click();
+    popover().findByText("ID").click();
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+
+    cy.findByTestId("loading-indicator").should("exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("Tax").should("have.length", 1);
+      cy.findAllByText("Orders → Tax").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("Tax").should("have.length", 1);
+      cy.findAllByText("Orders → Tax").should("have.length", 1).click();
+    });
+
+    cy.wait("@dataset");
+
+    queryBuilderMain()
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe.skip("issue 40635", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("correctly displays question's and nested model's column names (metabase#40635)", () => {
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+
+    getNotebookStep("data").button("Pick columns").click();
+    popover().findByText("Select none").click();
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 0 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    join();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .button("Pick columns")
+      .click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("ID").click();
+    });
+
+    getNotebookStep("join", { stage: 0, index: 1 })
+      .findByText("Product ID")
+      .click();
+    popover().findByText("User ID").click();
+
+    visualize();
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    cy.button("Save").click();
+    modal().button("Save").click();
+    modal().findByText("Not now").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openQuestionActions();
+    popover().findByTextEnsureVisible("Turn into a model").click();
+    modal().button("Turn this into a model").click();
+    undoToast().should("contain", "This is a model now").icon("close").click();
+
+    assertSettingsSidebar();
+    assertVisualizationColumns();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+    });
+  });
+
+  function assertVisualizationColumns() {
+    assertTableHeader(0, "ID");
+    assertTableHeader(1, "Products → ID");
+    assertTableHeader(2, "Products_2 → ID");
+  }
+
+  function assertTableHeader(index: number, name: string) {
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
+  }
+
+  function assertSettingsSidebar() {
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 4);
+      cy.findAllByText("Products").should("have.length", 1);
+      cy.findAllByText("Products 2").should("have.length", 1);
+    });
+
+    cy.button("Done").click();
+  }
+});
+
+describe("issue 33427", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("does not confuse the names of various native model columns mapped to the same database field (metabase#33427)", () => {
+    createNativeQuestion(
+      {
+        type: "model",
+        native: {
+          query: `
+            select o.ID, p1.title as created_by, p2.title as updated_by
+            from ORDERS o
+            join PRODUCTS p1 on p1.ID = o.PRODUCT_ID
+            join PRODUCTS p2 on p2.ID = o.USER_ID;
+        `,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    assertColumnHeaders();
+
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Edit metadata").click();
+
+    openColumnOptions("CREATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "CREATED_BY");
+
+    openColumnOptions("UPDATED_BY");
+    mapColumnTo({ table: "Products", column: "Title" });
+    renameColumn("Title", "UPDATED_BY");
+
+    assertColumnHeaders();
+    saveMetadataChanges();
+
+    assertColumnHeaders();
+
+    openNotebook();
+    getNotebookStep("data").button("Pick columns").click();
+    popover().within(() => {
+      cy.findByText("CREATED_BY").should("be.visible");
+      cy.findByText("UPDATED_BY").should("be.visible");
+    });
+  });
+
+  function assertColumnHeaders() {
+    cy.findAllByTestId("header-cell")
+      .should("contain", "CREATED_BY")
+      .and("contain", "UPDATED_BY");
+  }
 });

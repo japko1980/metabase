@@ -10,12 +10,16 @@ module.exports = {
     "../frontend/**/*.stories.mdx",
     "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
   ],
+  staticDirs: ["../resources/frontend_client"],
   addons: [
     "@storybook/addon-essentials",
     "@storybook/addon-links",
     "@storybook/addon-a11y",
   ],
   babel: () => {},
+  typescript: {
+    reactDocgen: "react-docgen-typescript-plugin",
+  },
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
     plugins: [

@@ -217,6 +217,8 @@ import line_style_solid_component from "./line_style-solid.svg?component";
 import line_style_solid_source from "./line_style-solid.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
+import lines_component from "./lines.svg?component";
+import lines_source from "./lines.svg?source";
 import link_component from "./link.svg?component";
 import link_source from "./link.svg?source";
 import list_component from "./list.svg?component";
@@ -321,6 +323,8 @@ import sort_component from "./sort.svg?component";
 import sort_source from "./sort.svg?source";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sort_arrows_source from "./sort_arrows.svg?source";
+import sparkles_component from "./sparkles.svg?component";
+import sparkles_source from "./sparkles.svg?source";
 import split_component from "./split.svg?component";
 import split_source from "./split.svg?source";
 import sql_component from "./sql.svg?component";
@@ -803,6 +807,10 @@ export const Icons = {
     component: line_component,
     source: line_source,
   },
+  lines: {
+    component: lines_component,
+    source: lines_source,
+  },
   lineandbar: {
     component: lineandbar_component,
     source: lineandbar_source,
@@ -1050,6 +1058,10 @@ export const Icons = {
   snippet: {
     component: snippet_component,
     source: snippet_source,
+  },
+  sparkles: {
+    component: sparkles_component,
+    source: sparkles_source,
   },
   star_filled: {
     component: star_filled_component,

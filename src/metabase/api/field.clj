@@ -64,6 +64,13 @@
     ;; ...but if we do, return the Field <3
     field))
 
+(defn get-fields
+  "Get `Field`s with IDs in `ids`."
+  [ids]
+  (when (seq ids)
+    (-> (filter mi/can-read? (t2/select Field :id [:in ids]))
+        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))))
+
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id include_editable_data_model]
@@ -233,9 +240,6 @@
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
 
-(def ^:private empty-field-values
-  {:values []})
-
 (declare search-values)
 
 (mu/defn field->values :- ms/FieldValuesResult
@@ -271,15 +275,6 @@
   {id ms/PositiveInt}
   (let [field (api/read-check (t2/select-one Field :id id))]
     (field->values field)))
-
-;; match things like GET /field%2Ccreated_at%2options
-;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
-(api/defendpoint GET "/field%2C:field-name%2C:options/values"
-  "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
-  convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
-  ;; we don't actually care what field-name or field-type are, so they're ignored
-  [_ _]
-  empty-field-values)
 
 (defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,

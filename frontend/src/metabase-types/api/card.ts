@@ -31,7 +31,9 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   enable_embedding: boolean;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
+  can_run_adhoc_query: boolean;
   can_restore: boolean;
+  can_delete: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
@@ -61,15 +63,6 @@ export interface PublicCard {
   visualization_settings: VisualizationSettings;
   parameters?: Parameter[];
   dataset_query: PublicDatasetQuery;
-}
-
-export interface XrayCard {
-  id: string;
-  name: string;
-  description: string | null;
-  display: CardDisplayType;
-  visualization_settings: VisualizationSettings;
-  dataset_query: DatasetQuery;
 }
 
 export type CardDisplayType = string;

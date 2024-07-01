@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, MutableRefObject } from "react";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
@@ -20,9 +21,9 @@ export const PolicyToken = styled(Button)<
   justify-content: center;
   ${({ variant }) =>
     css`
-      border-color: ${color(
-        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-      )} !important;
+      border-color: ${["filled", "outline"].includes(variant || "")
+        ? "var(--mb-color-brand)"
+        : "var(--mb-color-border)"} !important;
     `};
   span {
     gap: 0.5rem;
@@ -33,7 +34,10 @@ export const PolicyToken = styled(Button)<
 `;
 PolicyToken.defaultProps = { radius: "sm" };
 
-export const StyledLauncher = styled(Flex)<
+export const StyledLauncher = styled(
+  Flex,
+  doNotForwardProps("forRoot", "inheritsRootStrategy"),
+)<
   {
     forRoot?: boolean;
     inheritsRootStrategy?: boolean;
@@ -52,14 +56,19 @@ export const StyledLauncher = styled(Flex)<
   width: 100%;
   ${({ variant }) =>
     css`
-      border-color: ${color(
-        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-      )} !important;
+      border-color: ${["filled", "outline"].includes(variant || "")
+        ? "var(--mb-color-brand)"
+        : "var(--mb-color-border)"} !important;
     `};
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
-  background-color: ${({ forRoot }) => color(forRoot ? "bg-medium" : "white")};
-  ${({ forRoot }) => (forRoot ? "" : `border: 1px solid ${color("border")}`)};
+  background-color: ${({ forRoot }) =>
+    forRoot ? color("bg-medium") : color("bg-white")};
+  ${({ forRoot }) =>
+    !forRoot &&
+    css`
+      border: 1px solid var(--mb-color-border);
+    `};
   flex-direction: row;
   align-items: center;
   ${breakpointMaxSmall} {

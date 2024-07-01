@@ -56,11 +56,11 @@ export const InputField = styled.input<InputProps>`
   ${props => inputPadding(props.fieldSize)}
   ${props => inputTypography(props.fieldSize)}
   font-family: inherit;
-  color: ${color("text-dark")};
-  border: 1px solid ${color("border")};
+  color: var(--mb-color-text-dark);
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
   background-color: ${props =>
-    props.readOnly ? "var(--mb-color-bg-light)" : color("bg-white")};
+    props.readOnly ? "var(--mb-color-bg-light)" : "var(--mb-color-bg-white)"};
   outline: none;
   text-align: inherit;
 
@@ -80,7 +80,7 @@ export const InputField = styled.input<InputProps>`
   ${props =>
     props.hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: var(--mb-color-error);
     `};
 
   ${props =>
@@ -145,10 +145,15 @@ export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
 `;
 
 export const InputSubtitle = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   position: absolute;
   top: 1.25em;
   left: 1.25em;
   font-family: ${monospaceFontFamily};
   font-size: 0.75em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 90%;
 `;

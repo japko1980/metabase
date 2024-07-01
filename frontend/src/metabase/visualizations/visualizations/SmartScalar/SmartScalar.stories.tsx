@@ -4,6 +4,7 @@ import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
 } from "__support__/storybook";
+import type { MetabaseTheme } from "embedding-sdk";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -35,8 +36,8 @@ export const Default: Story = () => (
 );
 
 // Example of how themes can be applied in the SDK.
-export const EmbeddingTemplate: Story = () => {
-  const theme = {
+export const EmbeddingTheme: Story = () => {
+  const theme: MetabaseTheme = {
     colors: {
       positive: "#4834d4",
       negative: "#e84118",

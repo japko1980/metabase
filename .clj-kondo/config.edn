@@ -136,7 +136,7 @@
    ;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
    ;;    you should go create one.
    ;;
-   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed ;; to use namespaces from
+   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed to use namespaces from
    ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
    ;;    better than `:any`.
    ;;
@@ -159,8 +159,10 @@
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
+    metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
+    metabase.channel               #{metabase.channel.core}
     metabase.config                #{metabase.config}
     metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
@@ -260,9 +262,11 @@
     metabase.analyze               :any
     metabase.api                   :any
     metabase.async                 :any
+    metabase.audit                 :any
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
+    metabase.channel               :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any
@@ -279,7 +283,12 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
-    metabase.native-query-analyzer :any
+    metabase.native-query-analyzer #{metabase.config
+                                     metabase.driver
+                                     metabase.lib
+                                     metabase.public-settings
+                                     metabase.query-processor
+                                     metabase.util}
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
@@ -410,6 +419,7 @@
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
+    metabase.channel.core                                         channel
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
@@ -851,11 +861,11 @@
     :metabase/defsetting-must-specify-export {:level :off}
     :discouraged-var                         {metabase.driver/database-supports? {:level :off}}}
 
-  :hooks
-  {:analyze-call
-   {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-    clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-    clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
+   :hooks
+   {:analyze-call
+    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters

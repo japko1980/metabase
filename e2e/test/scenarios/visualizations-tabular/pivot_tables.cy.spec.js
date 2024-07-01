@@ -16,7 +16,10 @@ import {
   openStaticEmbeddingModal,
   modal,
   createQuestion,
+  dashboardCards,
+  queryBuilderMain,
 } from "e2e/support/helpers";
+import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
   ORDERS,
@@ -1016,6 +1019,69 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     }
   });
 
+  it("should be horizontally scrollable when columns overflow", () => {
+    const createdAtField = [
+      "field",
+      REVIEWS.CREATED_AT,
+      {
+        "temporal-unit": "month",
+        "base-type": "type/DateTimeWithLocalTZ",
+      },
+    ];
+    const ratingField = [
+      "field",
+      REVIEWS.RATING,
+      { "base-type": "type/Integer" },
+    ];
+
+    const query = {
+      "source-table": REVIEWS_ID,
+      aggregation: [["count"]],
+      breakout: [createdAtField, ratingField],
+    };
+
+    const vizSettings = {
+      rows: ratingField,
+      columns: createdAtField,
+      "pivot_table.column_split": {
+        rows: [ratingField],
+        columns: [createdAtField],
+        values: [["aggregation", 0]],
+      },
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: QUESTION_NAME,
+        query,
+        display: "pivot",
+        visualization_settings: vizSettings,
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id }, questionId }) => {
+      cy.wrap(questionId).as("questionId");
+      visitDashboard(dashboard_id);
+    });
+
+    dashboardCards().within(() => {
+      cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
+      cy.findByText("Row totals").should("be.visible");
+    });
+
+    cy.get("@questionId").then(id => visitQuestion(id));
+
+    queryBuilderMain().within(() => {
+      cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
+      cy.findByText("Row totals").should("be.visible");
+    });
+  });
+
   describe("column resizing", () => {
     const getCellWidth = textEl =>
       textEl.closest("[data-testid=pivot-table-cell]").width();
@@ -1091,57 +1157,53 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     main().findByText("User → Address").should("be.visible");
   });
 
-  it(
-    "should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)",
-    { tags: "@flaky" },
-    () => {
-      const query = {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
+  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
+    const query = {
+      type: "query",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    visitQuestionAdhoc({
+      dataset_query: query,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
             ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
             ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
           ],
+          columns: [["field", "count", { "base-type": "type/Integer" }]],
+          values: [["aggregation", 0]],
         },
-        database: SAMPLE_DB_ID,
-      };
+      },
+    });
 
-      visitQuestionAdhoc({
-        dataset_query: query,
-        display: "pivot",
-        visualization_settings: {
-          "pivot_table.column_split": {
-            rows: [
-              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-              ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
-            ],
-            columns: [["field", "count", { "base-type": "type/Integer" }]],
-            values: [["aggregation", 0]],
-          },
-        },
-      });
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 205 rows",
+    );
 
-      cy.findByTestId("question-row-count").should(
-        "have.text",
-        "Showing 205 rows",
-      );
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    cy.findByTestId("save-question-modal").findByText("Save").click();
+    cy.wait("@createCard");
+    cy.url().should("include", "/question/");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+    cy.reload();
+    cy.wait("@cardPivotQuery");
 
-      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-      cy.findByTestId("save-question-modal").findByText("Save").click();
-      cy.wait("@createCard");
-      cy.url().should("include", "/question/");
-      cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
-      cy.reload();
-      cy.wait("@cardPivotQuery");
-
-      cy.findByTestId("question-row-count").should(
-        "have.text",
-        "Showing 205 rows",
-      );
-    },
-  );
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 205 rows",
+    );
+  });
 
   describe("issue 37380", () => {
     beforeEach(() => {
@@ -1207,7 +1269,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByTestId("viz-settings-button").click();
       cy.findByLabelText("Show row totals").click();
 
-      cy.button("Save").should("have.attr", "disabled");
+      cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
     });
   });
 });
