@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
@@ -62,6 +63,11 @@
   (->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
                                            (map ->op-arg)
                                            args))))
+
+(defn ensure-ident
+  "Given an MBQL clause, ensure that it has an `:ident` in its options."
+  [clause]
+  (lib.options/update-options clause update :ident #(or % (lib.ident/random-ident))))
 
 (defn defop-create
   "Impl for [[defop]]."

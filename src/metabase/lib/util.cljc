@@ -15,6 +15,7 @@
    [metabase.lib.database.methods :as lib.database.methods]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -94,7 +95,8 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name)
+                                        (assoc :lib/expression-name a-name
+                                               :ident (lib.ident/random-ident))
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -551,7 +553,10 @@
                    query stage-number
                    update location
                    (fn [summary-clauses]
-                     (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
+                     (->> a-summary-clause
+                          lib.common/->op-arg
+                          lib.common/ensure-ident
+                          (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
