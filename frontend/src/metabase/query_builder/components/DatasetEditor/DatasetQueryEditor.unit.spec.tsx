@@ -19,8 +19,8 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-const { NativeQueryEditor } = jest.requireActual(
-  "metabase/query_builder/components/NativeQueryEditor",
+const { AceEditorInner } = jest.requireActual(
+  "metabase/query_builder/components/NativeQueryEditor/AceEditor/AceEditor.tsx",
 );
 
 const TEST_DB = createSampleDatabase();
@@ -110,7 +110,7 @@ describe("DatasetQueryEditor", () => {
     jest.unmock("metabase/query_builder/components/NativeQueryEditor");
 
     jest
-      .spyOn(NativeQueryEditor.prototype, "loadAceEditor")
+      .spyOn(AceEditorInner.prototype, "loadAceEditor")
       .mockImplementation(_.noop);
   });
 
@@ -134,14 +134,6 @@ describe("DatasetQueryEditor", () => {
     expect(
       screen.queryByTestId("native-query-editor-sidebar"),
     ).not.toBeInTheDocument();
-  });
-
-  it("hides the native query editor container when query tab is inactive", async () => {
-    await setup({ isActive: false });
-
-    expect(
-      screen.getByTestId("native-query-editor-container"),
-    ).not.toBeVisible();
   });
 
   it("re-renders DatasetQueryEditor when height is 0 and isActive prop changes", async () => {

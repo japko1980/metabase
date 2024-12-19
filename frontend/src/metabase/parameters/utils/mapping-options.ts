@@ -6,6 +6,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getGroupName } from "metabase/querying/filters/utils";
+import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -64,6 +65,7 @@ function buildStructuredQuerySectionOptions(
 
 function buildNativeQuerySectionOptions(
   section: DimensionOptionsSection,
+  stageIndex: number,
 ): NativeParameterMappingOption[] {
   return section.items
     .flatMap(({ dimension }) =>
@@ -73,7 +75,7 @@ function buildNativeQuerySectionOptions(
       name: dimension.displayName(),
       icon: dimension.icon() ?? "",
       isForeign: false,
-      target: buildDimensionTarget(dimension),
+      target: buildDimensionTarget(dimension, stageIndex),
     }));
 }
 
@@ -128,13 +130,17 @@ export function getParameterMappingOptions(
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOption[] {
-  if (
-    dashcard &&
-    isVirtualDashCard(dashcard) &&
-    ["heading", "text"].includes(card.display)
-  ) {
-    const tagNames = tag_names(dashcard.visualization_settings.text || "");
-    return tagNames ? tagNames.map(buildTextTagOption) : [];
+  if (dashcard && isVirtualDashCard(dashcard)) {
+    if (["heading", "text"].includes(card.display)) {
+      const tagNames = tag_names(dashcard.visualization_settings.text || "");
+      return tagNames ? tagNames.map(buildTextTagOption) : [];
+    } else if (card.display === "iframe") {
+      const iframeAttributes = getAllowedIframeAttributes(
+        dashcard.visualization_settings.iframe,
+      );
+      const tagNames = tag_names(iframeAttributes?.src || "");
+      return tagNames ? tagNames.map(buildTextTagOption) : [];
+    }
   }
 
   if (dashcard && isActionDashCard(dashcard)) {
@@ -184,6 +190,7 @@ export function getParameterMappingOptions(
 
   const legacyQuery = question.legacyQuery();
   const options: NativeParameterMappingOption[] = [];
+  const stageIndex = Lib.stageCount(question.query()) - 1;
 
   options.push(
     ...legacyQuery
@@ -196,7 +203,7 @@ export function getParameterMappingOptions(
         parameter ? dimensionFilterForParameter(parameter) : undefined,
       )
       .sections()
-      .flatMap(section => buildNativeQuerySectionOptions(section)),
+      .flatMap(section => buildNativeQuerySectionOptions(section, stageIndex)),
   );
 
   return options;

@@ -324,13 +324,10 @@ export const PLUGIN_COLLECTIONS = {
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
-  canCleanUp: false,
+  canCleanUp: (_collection: Collection) => false as boolean,
   getCleanUpMenuItems: (
+    _collection: Collection,
     _itemCount: number,
-    _url: string,
-    _isInstanceAnalyticsCustom: boolean,
-    _isTrashed: boolean,
-    _canWrite: boolean,
   ): CleanUpMenuItem[] => [],
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
@@ -535,14 +532,6 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     verified: false,
   }),
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
-};
-
-export const PLUGIN_DASHBOARD_HEADER = {
-  extraButtons: (_dashboard: Dashboard) => [],
-};
-
-export const PLUGIN_QUERY_BUILDER_HEADER = {
-  extraButtons: (_question: Question) => [],
 };
 
 export type InsightsLinkProps = (

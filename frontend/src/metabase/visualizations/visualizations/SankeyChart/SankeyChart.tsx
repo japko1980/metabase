@@ -8,6 +8,10 @@ import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/la
 import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
 import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/graph/sankey/option/tooltip";
+import {
+  useCloseTooltipOnScroll,
+  useSankeyChartColorsClasses,
+} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -43,11 +47,7 @@ export const SankeyChart = ({
   const option = useMemo(
     () => ({
       ...getSankeyChartOption(chartModel, layout, settings, renderingContext),
-      tooltip: getTooltipOption(
-        containerRef,
-        chartModel.sankeyColumns.value.column,
-        chartModel.formatters,
-      ),
+      tooltip: getTooltipOption(containerRef, chartModel),
     }),
     [chartModel, layout, settings, renderingContext],
   );
@@ -58,20 +58,27 @@ export const SankeyChart = ({
 
   const { eventHandlers } = useChartEvents(
     chartRef,
-    chartModel,
+    chartModel.sankeyColumns,
     rawSeriesWithRemappings,
     settings,
     onVisualizationClick,
     clicked,
   );
 
+  useCloseTooltipOnScroll(chartRef);
+
+  const sankeyColorsCss = useSankeyChartColorsClasses(chartModel);
+
   return (
-    <ResponsiveEChartsRenderer
-      ref={containerRef}
-      option={option}
-      eventHandlers={eventHandlers}
-      onInit={handleInit}
-    />
+    <>
+      <ResponsiveEChartsRenderer
+        ref={containerRef}
+        option={option}
+        eventHandlers={eventHandlers}
+        onInit={handleInit}
+      />
+      {sankeyColorsCss}
+    </>
   );
 };
 
