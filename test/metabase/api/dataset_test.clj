@@ -3,7 +3,6 @@
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -32,6 +31,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -83,7 +83,7 @@
                     {:aggregation [[:count]]})
             result (mt/user-http-request :crowberto :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (partial=
+          (is (=?
                {:data                   {:rows             [[1000]]
                                          :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                                          :native_form      true
@@ -102,24 +102,25 @@
                 :database_id            (mt/id)}
                (format-response result))))
         (testing "\nSaved QueryExecution"
-          (is (= {:hash         true
-                  :row_count    1
-                  :result_rows  1
-                  :context      :ad-hoc
-                  :executor_id  (mt/user->id :crowberto)
-                  :native       false
-                  :pulse_id     nil
-                  :card_id      nil
-                  :is_sandboxed false
-                  :dashboard_id nil
-                  :error        nil
-                  :id           true
-                  :action_id    nil
-                  :cache_hit    false
-                  :cache_hash   false
-                  :database_id  (mt/id)
-                  :started_at   true
-                  :running_time true
+          (is (= {:hash             true
+                  :row_count        1
+                  :result_rows      1
+                  :context          :ad-hoc
+                  :executor_id      (mt/user->id :crowberto)
+                  :native           false
+                  :pulse_id         nil
+                  :card_id          nil
+                  :is_sandboxed     false
+                  :dashboard_id     nil
+                  :error            nil
+                  :id               true
+                  :action_id        nil
+                  :cache_hit        false
+                  :cache_hash       false
+                  :parameterized    false
+                  :database_id      (mt/id)
+                  :started_at       true
+                  :running_time     true
                   :embedding_client nil
                   :embedding_version nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
@@ -177,7 +178,7 @@
   [url]
   (-> (client/client-full-response (test.users/username->token :rasta)
                                    :post 200 url
-                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+                                   :query (json/encode (mt/mbql-query checkins {:limit 1})))
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
@@ -211,7 +212,7 @@
                                                         :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                                   :query (json/generate-string
+                                                   :query (json/encode
                                                            {:database lib.schema.id/saved-questions-virtual-database-id
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
@@ -304,7 +305,7 @@
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
       (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                           :query (json/generate-string
+                                           :query (json/encode
                                                    {:database (mt/id)
                                                     :type     :query
                                                     :query    {:source-table (mt/id :venues)}
@@ -319,13 +320,13 @@
 (deftest export-with-remapped-fields
   (testing "POST /api/dataset/:format"
     (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
-      (let [query (json/generate-string {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :venues)
-                                                    :limit 1}
-                                         :middleware
-                                         {:add-default-userland-constraints? true
-                                          :userland-query?                   true}})]
+      (let [query (json/encode {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :venues)
+                                           :limit 1}
+                                :middleware
+                                {:add-default-userland-constraints? true
+                                 :userland-query?                   true}})]
         (mt/with-column-remappings [venues.category_id categories.name]
           (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
                                              :query query)]
@@ -728,7 +729,7 @@
                  (->> (mt/user-http-request
                        :crowberto :post 200
                        (format "dataset/%s" (name export-format))
-                       :query (json/generate-string q)
+                       :query (json/encode q)
                        :format_rows apply-formatting?)
                       ((get output-helper export-format))))))))))
 
