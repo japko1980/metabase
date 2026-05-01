@@ -152,7 +152,6 @@ export const Questions = createEntity({
   },
 
   objectSelectors: {
-    getName: (card) => card && card.name,
     getCollection: (card) => card && normalizedCollection(card.collection),
   },
 
